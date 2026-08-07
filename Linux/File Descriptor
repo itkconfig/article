@@ -1,0 +1,463 @@
+📂 File Descriptor (FD) ใน Linux คืออะไร?
+
+File Descriptor หรือ FD คือ หมายเลขอ้างอิงที่ Linux มอบให้ Process เพื่อใช้ติดต่อกับสิ่งที่เปิดอยู่ เช่น ไฟล์, Socket, Pipe, Terminal และอุปกรณ์ต่าง ๆ
+
+พูดง่าย ๆ:
+
+🧠 File Descriptor = หมายเลขที่ Process ใช้เรียกหา Resource ที่มันเปิดอยู่
+
+🎯 ลองนึกภาพง่าย ๆ
+
+สมมติ Process ชื่อ nginx เปิดสิ่งต่าง ๆ อยู่:
+
+                NGINX Process
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+       FD = 0     FD = 1     FD = 2
+          │          │          │
+          ▼          ▼          ▼
+       stdin      stdout      stderr
+
+Linux ไม่ได้ให้โปรแกรมเรียกสิ่งเหล่านี้ด้วยชื่ออย่างเดียว แต่ให้ หมายเลข FD มาอ้างอิง
+
+🔢 FD พื้นฐานที่ควรรู้
+
+ทุก Process โดยทั่วไปจะมี 3 FD แรก:
+
+FD 0 → stdin
+FD 1 → stdout
+FD 2 → stderr
+🟢 FD 0 — stdin
+
+ข้อมูลที่ Process รับเข้ามา
+
+Keyboard
+   │
+   ▼
+stdin
+   │
+   ▼
+FD 0
+   │
+   ▼
+Program
+🔵 FD 1 — stdout
+
+ข้อมูลปกติที่ Process ส่งออก
+
+Program
+   │
+   ▼
+FD 1
+   │
+   ▼
+Terminal
+🔴 FD 2 — stderr
+
+ข้อมูล Error
+
+Program
+   │
+   ▼
+FD 2
+   │
+   ▼
+Terminal
+🧪 ตัวอย่างที่ 1 — ใช้คำสั่ง echo
+
+ลอง:
+
+echo "Hello Linux"
+
+แนวคิดภายในคือ
+
+echo
+ │
+ └── stdout
+       │
+       ▼
+     FD 1
+       │
+       ▼
+   Terminal
+
+ดังนั้นเมื่อเราเห็น
+
+Hello Linux
+
+มันถูกส่งออกผ่าน stdout (FD 1)
+
+📄 ตัวอย่างที่ 2 — Redirect stdout
+
+ลอง:
+
+echo "Hello" > output.txt
+
+ตรงนี้น่าสนใจมาก
+
+เดิม:
+
+echo
+ │
+ ▼
+FD 1
+ │
+ ▼
+Terminal
+
+แต่ > ทำให้ Shell เปลี่ยนปลายทางของ FD 1:
+
+echo
+ │
+ ▼
+FD 1
+ │
+ ▼
+output.txt
+
+ดังนั้น
+
+echo "Hello" > output.txt
+
+ไม่ได้หมายความว่า echo รู้จัก output.txt โดยตรง
+
+แต่ Shell จัดการให้:
+
+stdout (FD 1)
+       ↓
+output.txt
+🔥 ตัวอย่างที่ 3 — stderr กับ stdout
+
+ลอง:
+
+ls /etc /does-not-exist
+
+อาจได้ทั้ง
+
+รายชื่อไฟล์...
+
+และ
+
+ls: cannot access '/does-not-exist'
+
+สองอย่างนี้มาจากคนละ FD
+
+                 ls
+                  │
+          ┌───────┴────────┐
+          ▼                ▼
+       FD 1              FD 2
+      stdout             stderr
+          │                │
+          ▼                ▼
+       Normal            Error
+       output            output
+
+เราสามารถ redirect แยกกันได้:
+
+ls /etc /does-not-exist > output.txt 2> error.txt
+
+ผลคือ
+
+FD 1 ──────────► output.txt
+
+FD 2 ──────────► error.txt
+
+นี่เป็นเหตุผลว่าทำไม Linux จึงสามารถแยก Normal Output และ Error Output ออกจากกันได้
+
+🧠 แล้ว FD จริง ๆ หน้าตาเป็นอย่างไร?
+
+สมมติ Process มี:
+
+PID = 1234
+
+Linux จะมี directory:
+
+/proc/1234/fd/
+
+ลองดู:
+
+ls -l /proc/1234/fd/
+
+อาจเห็น:
+
+0 -> /dev/pts/0
+1 -> /dev/pts/0
+2 -> /dev/pts/0
+3 -> /var/log/app.log
+4 -> socket:[123456]
+5 -> pipe:[789012]
+
+ตรงนี้จะเห็นภาพชัดมากว่า FD ไม่ได้หมายถึงเฉพาะ File
+
+FD สามารถชี้ไปยัง:
+
+📄 File
+🖥️ Terminal
+🔌 Socket
+🔄 Pipe
+💽 Device
+และ Resource อื่น ๆ ที่ Kernel รองรับ
+
+🔌 ตัวอย่างที่ 4 — Network Socket
+
+นี่เป็นจุดที่สำคัญมากสำหรับ Cyber Security
+
+สมมติ Process:
+
+nginx
+PID = 2000
+
+เปิด Network Connection อยู่
+
+nginx
+  │
+  ▼
+FD 7
+  │
+  ▼
+Socket
+  │
+  ▼
+TCP Connection
+
+ตรวจสอบได้ด้วย:
+
+ls -l /proc/2000/fd/
+
+อาจเห็น:
+
+7 -> socket:[456789]
+
+หมายความว่า
+
+🔌 FD 7 เป็นตัวอ้างอิงไปยัง Socket ที่ Kernel สร้างไว้
+
+ดังนั้น Process ไม่ได้จัดการ TCP connection ด้วย "ไฟล์ธรรมดา" แต่ใช้ File Descriptor เป็น Handle ไปยัง Socket
+
+🧩 FD กับ Socket เกี่ยวข้องกันอย่างไร?
+
+นี่เป็นแนวคิดสำคัญมาก:
+
+Application
+     │
+     │ read()
+     │ write()
+     ▼
+  FD = 7
+     │
+     ▼
+   Kernel
+     │
+     ▼
+  Socket
+     │
+     ▼
+ Network
+
+ตัวอย่างโปรแกรมอาจเรียก:
+
+read(fd, buffer, size);
+
+หรือ
+
+write(fd, data, size);
+
+Kernel จะรู้ว่า
+
+FD 7
+ ↓
+Socket ตัวไหน?
+
+แล้วดำเนินการให้
+
+🐳 ตัวอย่าง Docker ที่น่าสนใจ
+
+สมมติ Process มีการเปิด:
+
+/var/run/docker.sock
+
+ใน Process:
+
+curl
+ │
+ ▼
+FD 3
+ │
+ ▼
+/var/run/docker.sock
+ │
+ ▼
+Docker API
+
+ตรวจสอบได้จาก:
+
+ls -l /proc/<PID>/fd/
+
+อาจพบ:
+
+3 -> /var/run/docker.sock
+
+จากมุมมอง Security นี่สำคัญมาก เพราะ
+
+🚨 การเปิด Docker Socket ทำให้ Process สามารถสื่อสารกับ Docker API ได้
+
+และถ้า Process ที่ไม่ควรเข้าถึง Docker Socket กลับเปิด FD ไปยัง
+
+/var/run/docker.sock
+
+ก็สามารถนำไปสร้าง Detection ได้
+
+เช่นแนวคิด:
+
+Process
+   │
+   ▼
+open()
+   │
+   ▼
+/var/run/docker.sock
+   │
+   ▼
+FD 3
+   │
+   ▼
+Docker API
+
+นี่เชื่อมโยงโดยตรงกับ Container Security / eBPF / Falco / Tetragon / Wazuh ที่คุณกำลังศึกษาอยู่
+
+🔍 แล้ว Kernel เก็บ FD ไว้ที่ไหน?
+
+แนวคิดง่าย ๆ คือ
+
+Process
+   │
+   ▼
+File Descriptor Table
+   │
+   ├── 0 ──► stdin
+   ├── 1 ──► stdout
+   ├── 2 ──► stderr
+   ├── 3 ──► File
+   ├── 4 ──► Socket
+   └── 5 ──► Pipe
+
+แต่ละ Process มี File Descriptor Table ของตัวเอง
+
+ดังนั้น
+
+Process A
+FD 3 → file A
+
+Process B
+FD 3 → socket B
+
+สามารถเกิดขึ้นได้พร้อมกัน
+
+🔑 FD = หมายเลขภายในบริบทของ Process ไม่ใช่หมายเลขที่เป็น Global ของทั้งระบบ
+
+⚠️ ทำไม FD ถึงสำคัญกับ Cyber Security?
+
+เพราะ FD ทำให้เราเห็นว่า Process กำลังติดต่อกับ Resource อะไร
+
+ตัวอย่าง:
+
+Process
+   │
+   ├── FD 3 → /etc/passwd
+   ├── FD 4 → /var/log/app.log
+   ├── FD 5 → socket
+   └── FD 6 → /var/run/docker.sock
+
+จากตรงนี้ Security Monitoring สามารถตั้งคำถามได้ว่า:
+
+🤔 Process นี้ควรเปิดสิ่งเหล่านี้หรือไม่?
+
+เช่น
+
+nginx
+   │
+   └── /var/www/index.html
+          ✅ ปกติ
+
+แต่
+
+nginx
+   │
+   └── /var/run/docker.sock
+          🚨 น่าสงสัย
+
+หรือ
+
+python
+   │
+   └── /etc/shadow
+          🚨 ต้องตรวจสอบ
+🧨 FD กับ File Descriptor Leak
+
+อีกเรื่องหนึ่งที่สำคัญคือ FD Leak
+
+ถ้า Application เปิดไฟล์หรือ Socket จำนวนมากแล้วไม่ยอม close()
+
+Application
+   │
+   ├── FD 3
+   ├── FD 4
+   ├── FD 5
+   ├── FD 6
+   ├── ...
+   └── FD 100000
+
+ในที่สุดอาจเกิด:
+
+Too many open files
+
+ตรวจสอบ Limit ได้ด้วย:
+
+ulimit -n
+
+และดูจำนวน FD ของ Process:
+
+ls /proc/<PID>/fd | wc -l
+🗺️ สรุปเป็นภาพเดียว
+                 Linux Process
+                       │
+                       ▼
+              File Descriptor Table
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+      FD 0           FD 1           FD 2
+      stdin          stdout         stderr
+        │              │              │
+        ▼              ▼              ▼
+     Terminal       Terminal       Terminal
+
+
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+      FD 3           FD 4           FD 5
+        │              │              │
+        ▼              ▼              ▼
+      File          Socket           Pipe
+        │              │              │
+        ▼              ▼              ▼
+   /var/log/...     Network       Process IPC
+🧠 จำสั้น ๆ
+
+File Descriptor (FD) คือ "หมายเลข Handle" ที่ Process ใช้บอก Kernel ว่า ต้องการทำงานกับ Resource ตัวไหน
+
+และเลขที่ควรจำให้ขึ้นใจ:
+
+0 = stdin
+1 = stdout
+2 = stderr
+
+ส่วน
+
+3, 4, 5, 6, ...
+
+มักถูกใช้สำหรับ File, Socket, Pipe, Device และ Resource อื่น ๆ ที่ Process เปิดขึ้นมา
+
+🔐 ในมุม Cyber Security การดู FD จึงช่วยตอบคำถามสำคัญว่า "Process นี้กำลังเปิดและติดต่อกับ Resource อะไรอยู่?"
