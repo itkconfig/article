@@ -1,1 +1,2 @@
-
+sudo journalctl -u tetragon -n 50 --no-pager | grep -i error
+sudo journalctl -u tetragon -e --no-pager -n 100
