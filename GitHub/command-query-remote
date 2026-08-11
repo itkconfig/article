@@ -1,0 +1,2 @@
+it ls-remote https://github.com/git/git.git
+git ls-remote https://gitlab.com/gitlab-org/gitlab.git
