@@ -59,9 +59,4 @@
 
 ---
 
-## 4. แหล่งอ้างอิงและผู้จัดทำ (Credits)
 
-- **ผู้จัดทำสื่อ**: Hacking Articles / Ignite Technologies [1]
-- **Twitter/X**: `@hackinarticles` [1]
-- **GitHub Repository**: `https://github.com/IgniteTechnologies` [1]
-- **LinkedIn**: `https://in.linkedin.com/company/hackingarticles` [1]
