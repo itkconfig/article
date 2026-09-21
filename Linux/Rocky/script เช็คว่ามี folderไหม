@@ -1,0 +1,1 @@
+if [ -d "/etc/login.defs.d/" ]; then echo "✅ มีโฟลเดอร์นี้ในระบบ"; else echo "❌ ไม่มีโฟลเดอร์นี้ครับ"; fi
