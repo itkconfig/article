@@ -210,3 +210,12 @@ Security Monitoring
 
 ```
 ```
+คำอธิบายเพิ่มเติม:
+
+dc (Domain Component): คือการแบ่งชื่อโดเมนออกเป็นส่วนๆ เช่น lab.lan จะถูกแปลงเป็น dc=lab,dc=lan
+
+cn (Common Name): ใช้เรียกชื่อโฟลเดอร์หลัก กลุ่ม หรือกฎต่างๆ เช่น cn=users, cn=admins
+
+uid (User ID): ใช้สำหรับระบุชื่อล็อกอินของผู้ใช้งาน
+
+fqdn (Fully Qualified Domain Name): ใช้ระบุชื่อเต็มของเครื่องคอมพิวเตอร์ในระบบ
