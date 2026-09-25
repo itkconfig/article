@@ -1,1 +1,2 @@
 sudo cscli decisions list
+sudo cscli alerts listb
